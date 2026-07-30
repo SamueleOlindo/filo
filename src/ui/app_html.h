@@ -274,13 +274,17 @@ inline constexpr char kAppHtml[] = R"FILOHTML(<!doctype html>
 
   /* Asking the model what a file is. Everything else on this screen is a rule
      Filo can defend; this is prose nothing checks, so it is marked as such and
-     kept visually apart from the reason above it. */
-  .item .ask {
+     kept visually apart from the reason above it.
+
+     NOT scoped to .item. The screen has two kinds of row — .item in the flat
+     lists and .gfile inside a duplicate set — and scoping this to the first one
+     left the button in the duplicate sets rendering as a bare browser button. */
+  .ask {
     flex: none; width: 20px; height: 20px; border-radius: 4px; cursor: pointer;
     border: 1px solid var(--border); background: var(--bg); color: var(--fg-faint);
     font: inherit; font-size: 11px; line-height: 1; padding: 0;
   }
-  .item .ask:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .ask:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
   .said {
     display: flex; gap: 8px; align-items: flex-start;
     margin: 2px 0 8px 32px; padding: 7px 10px; border-radius: 5px;
@@ -892,7 +896,11 @@ $space.addEventListener('click', event => {
   // of questions can be cleared one at a time.
   const ask = event.target.closest('button[data-ask]');
   if (ask) {
-    const row = ask.closest('.item');
+    // Both kinds of row. Looking only for .item found nothing inside a
+    // duplicate set, so this threw on the next line and the click did nothing
+    // at all — a dead button rather than a visibly broken one.
+    const row = ask.closest('.item, .gfile');
+    if (!row) return;
     const open = row.nextElementSibling;
     if (open && open.classList.contains('said')) { open.remove(); return; }
     const said = document.createElement('div');
@@ -966,6 +974,26 @@ window.chrome.webview.addEventListener('message', event => {
     // on screen, and photographs what is left.
     if (window.filoAskFirst && !window.filoTestedRemoval) {
       window.filoTestedRemoval = 1;
+      // The duplicate sets use a different row element from the flat lists, and
+      // the question button was styled and wired for the flat one only: inside
+      // a set it rendered as a bare browser button and did nothing when
+      // clicked. Nothing noticed, because the capture only ever clicked rows in
+      // the flat lists. This is that check.
+      const inSet = $space.querySelector('.gfile .ask');
+      let setResult = 'no duplicate sets on this disk';
+      if (inSet) {
+        // Opened first: inside a collapsed category the element inherits
+        // display:none, and getComputedStyle would report a width that says
+        // nothing about whether the rule matched.
+        const cat = inSet.closest('.cat');
+        if (cat) cat.classList.add('open');
+        inSet.click();
+        const answered = inSet.closest('.gfile').nextElementSibling;
+        const styled = getComputedStyle(inSet).width === '20px';
+        setResult = (answered && answered.classList.contains('said') ? 'wired' : 'DEAD') +
+                    ', ' + (styled ? 'styled' : 'UNSTYLED');
+      }
+
       const first = $space.querySelector('[data-pick]');
       const id = first ? Number(first.dataset.pick) : -1;
       const before = $space.querySelectorAll('.item, .gfile').length;
@@ -982,7 +1010,8 @@ window.chrome.webview.addEventListener('message', event => {
 
       const after = $space.querySelectorAll('.item, .gfile').length;
       const headAfter = ($space.querySelector('.summary b') || {}).textContent;
-      window.filoRemoval = `rows ${before}->${after} head ${headBefore}->${headAfter}`;
+      window.filoRemoval = `rows ${before}->${after} head ${headBefore}->${headAfter}` +
+                           ` | ask in duplicate set: ${setResult}`;
       send({ type: 'probeCapture' });
       return;
     }
