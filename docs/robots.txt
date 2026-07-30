@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://samueleolindo.github.io/filo/sitemap.xml

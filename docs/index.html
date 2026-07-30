@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filo — find the file you can't name</title>
+<meta name="description" content="Windows file search by name, by content, and by meaning. Entirely local: no cloud, no account, one .exe.">
+
+<link rel="canonical" href="https://samueleolindo.github.io/filo/">
+<link rel="icon" href="images/logo.png" type="image/png">
+
+<!-- Absolute URLs, because a crawler and an unfurler do not resolve relative
+     ones the way a browser does. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://samueleolindo.github.io/filo/">
+<meta property="og:title" content="Filo — find the file you can't name">
+<meta property="og:description" content="Windows file search by name, by content, and by meaning. Entirely local: no cloud, no account, one .exe.">
+<meta property="og:image" content="https://samueleolindo.github.io/filo/images/social-card.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Filo — find the file you can't name">
+<meta name="twitter:description" content="Windows file search by name, by content, and by meaning. Entirely local.">
+<meta name="twitter:image" content="https://samueleolindo.github.io/filo/images/social-card.png">
+
+<!-- Tells a search engine this is a free Windows application rather than an
+     article about one, which is what earns the download-style result. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Filo",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows 10, Windows 11",
+  "softwareVersion": "0.1.0",
+  "license": "https://opensource.org/licenses/MIT",
+  "url": "https://samueleolindo.github.io/filo/",
+  "downloadUrl": "https://github.com/SamueleOlindo/filo/releases/latest",
+  "codeRepository": "https://github.com/SamueleOlindo/filo",
+  "description": "Windows desktop search that finds files by name, by the words written inside them, and by what those words mean. Runs entirely on the machine: no service, no cloud, no account.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "author": { "@type": "Person", "name": "Samuele Olindo" }
+}
+</script>
+
+<style>
+/* ---------------------------------------------------------------------------
+   Filo
+   One file, no dependencies, nothing fetched — the same promise the program
+   makes. Every colour and every face below resolves locally.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Ground and ink carry a slight blue bias away from neutral grey: the page
+     is a floor plan, drawn rather than printed. */
+  --paper:   #f7f6f3;
+  --raised:  #ffffff;
+  --ink:     #16161d;
+  --stone:   #6f6d68;
+  --faint:   #e2ded6;
+  --hairline:#d8d3c9;
+
+  /* The thread. One colour, one job — it is never used for a border, a
+     background wash or a hover state. */
+  --thread:  #d63031;
+  --thread-soft: rgba(214, 48, 49, 0.10);
+
+  --display: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --body: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+          "Helvetica Neue", Arial, sans-serif;
+
+  --measure: 63ch;
+  --step: clamp(1rem, 0.5rem + 1.2vw, 1.35rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:   #131317;
+    --raised:  #1b1b21;
+    --ink:     #eceae5;
+    --stone:   #8f8c86;
+    --faint:   #26262d;
+    --hairline:#31313a;
+    --thread:  #ff5a5b;
+    --thread-soft: rgba(255, 90, 91, 0.13);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:   #131317;
+  --raised:  #1b1b21;
+  --ink:     #eceae5;
+  --stone:   #8f8c86;
+  --faint:   #26262d;
+  --hairline:#31313a;
+  --thread:  #ff5a5b;
+  --thread-soft: rgba(255, 90, 91, 0.13);
+}
+:root[data-theme="light"] {
+  --paper:   #f7f6f3;
+  --raised:  #ffffff;
+  --ink:     #16161d;
+  --stone:   #6f6d68;
+  --faint:   #e2ded6;
+  --hairline:#d8d3c9;
+  --thread:  #d63031;
+  --thread-soft: rgba(214, 48, 49, 0.10);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: var(--step);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--thread); color: #fff; }
+
+a { color: inherit; }
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.wrap {
+  width: min(100% - 2.5rem, 68rem);
+  margin-inline: auto;
+}
+
+/* Section eyebrows are numbered ONLY where the content is genuinely ordered:
+   the three layers run in sequence, cheapest first, and that order is the
+   architecture. Nothing else on the page gets a number. */
+.eyebrow {
+  font-family: var(--display);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin: 0 0 0.9rem;
+}
+
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+/* ------------------------------------------------------------------- hero */
+.hero {
+  position: relative;
+  min-height: min(92svh, 46rem);
+  display: grid;
+  align-content: center;
+  padding: 7rem 0 5rem;
+  overflow: hidden;
+}
+
+/* The labyrinth. A classical labyrinth is not a maze: it has exactly one path
+   and no choices, which is why Ariadne's thread works at all. It sits behind
+   the words at low contrast and is drawn, not tiled. */
+#labyrinth {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hero .wrap { position: relative; z-index: 1; }
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--display);
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 3.5rem;
+}
+.mark img { display: block; width: 28px; height: 28px; }
+
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 1.2rem + 5.2vw, 5.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  max-width: 17ch;
+}
+h1 em {
+  font-style: normal;
+  color: var(--thread);
+}
+
+.lede {
+  max-width: var(--measure);
+  margin: 1.9rem 0 0;
+  font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.4rem);
+  color: var(--stone);
+}
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 2.6rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn:hover { border-color: var(--ink); }
+
+.btn.primary {
+  background: var(--thread);
+  border-color: var(--thread);
+  color: #fff;
+}
+.btn.primary:hover { filter: brightness(0.92); }
+.btn .meta { color: currentColor; opacity: 0.65; font-size: 0.85em; }
+
+/* ------------------------------------------------------------- the layers */
+section { padding: 6.5rem 0; border-top: 1px solid var(--faint); }
+
+h2 {
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  max-width: 22ch;
+}
+.section-note {
+  max-width: var(--measure);
+  color: var(--stone);
+  margin: 1.1rem 0 0;
+}
+
+.demo { margin-top: 3rem; }
+
+.queries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.6rem;
+}
+.q {
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--stone);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, border-color 0.15s;
+}
+.q:hover { color: var(--ink); border-color: var(--ink); }
+.q[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--thread);
+  box-shadow: inset 2px 0 0 var(--thread);
+}
+
+.panel {
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.15rem 1.35rem;
+  border-bottom: 1px solid var(--faint);
+}
+.searchbar svg { flex: none; color: var(--thread); }
+.searchbar .typed {
+  font-size: 1.15rem;
+  min-height: 1.6em;
+}
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  background: var(--thread);
+  vertical-align: text-bottom;
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.layers { display: grid; }
+.layer {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 1.5rem;
+  padding: 1.4rem 1.35rem;
+  border-bottom: 1px solid var(--faint);
+}
+.layer:last-child { border-bottom: 0; }
+
+.layer-name {
+  font-family: var(--display);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+.layer-name b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.hits { display: grid; gap: 0.7rem; }
+
+.hit {
+  display: grid;
+  gap: 0.25rem;
+  animation: rise 0.35s ease both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(4px); }
+}
+.hit .file {
+  font-family: var(--display);
+  font-size: 0.92rem;
+}
+.hit .why {
+  font-size: 0.88rem;
+  color: var(--stone);
+}
+.hit .why mark {
+  background: var(--thread-soft);
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: 2px;
+  box-shadow: inset 0 -1px 0 var(--thread);
+}
+
+.nothing {
+  font-size: 0.9rem;
+  color: var(--stone);
+  font-style: italic;
+}
+
+.payoff {
+  margin-top: 1.6rem;
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--thread);
+  max-width: var(--measure);
+  color: var(--stone);
+}
+.payoff strong { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------- screenshot */
+figure { margin: 3rem 0 0; }
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+}
+figcaption {
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  color: var(--stone);
+  max-width: var(--measure);
+}
+
+/* ------------------------------------------------------------------ specs */
+/* A spec sheet, not cards: the content is pairs of a claim and its number, and
+   a table says that better than twelve boxes would. */
+.specs {
+  width: 100%;
+  margin-top: 2.5rem;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.specs th, .specs td {
+  text-align: left;
+  padding: 1rem 1rem 1rem 0;
+  border-bottom: 1px solid var(--faint);
+  vertical-align: baseline;
+}
+.specs th {
+  font-weight: 400;
+  color: var(--stone);
+  font-size: 0.95rem;
+}
+.specs td {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+.specs tr:last-child th, .specs tr:last-child td { border-bottom: 0; }
+
+.why-list {
+  display: grid;
+  gap: 2.4rem;
+  margin-top: 3rem;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+.why-item h3 {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.6rem;
+}
+.why-item p { margin: 0; font-size: 0.98rem; color: var(--stone); }
+
+/* ------------------------------------------------------------------ limits */
+.limits { display: grid; gap: 1rem; margin-top: 2.5rem; max-width: var(--measure); }
+.limit {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+  font-size: 0.98rem;
+  color: var(--stone);
+}
+.limit::before {
+  content: "—";
+  color: var(--thread);
+  font-family: var(--display);
+}
+.limit b { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------------ footer */
+footer {
+  padding: 4rem 0 5rem;
+  border-top: 1px solid var(--faint);
+  color: var(--stone);
+  font-size: 0.9rem;
+}
+.footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+  align-items: center;
+}
+footer a { text-decoration: none; border-bottom: 1px solid var(--hairline); }
+footer a:hover { border-bottom-color: var(--thread); color: var(--ink); }
+.sp { flex: 1; }
+
+@media (max-width: 46rem) {
+  .layer { grid-template-columns: 1fr; gap: 0.7rem; }
+  .specs td { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="labyrinth" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="mark">
+      <!-- The real mark, not a redrawing of it. The PNG carries an alpha
+           channel, so it sits on either theme without a plate behind it. -->
+      <img src="images/logo.png" width="28" height="28" alt="" aria-hidden="true">
+      Filo
+    </div>
+
+    <h1>Find the file you <em>can't name</em>.</h1>
+
+    <p class="lede">
+      Filo searches your disk three ways at once — by name, by the words written
+      inside, and by what those words <strong>mean</strong>. It runs entirely on
+      your machine: no service, no account, nothing uploaded.
+    </p>
+
+    <div class="actions">
+      <a class="btn primary"
+         href="https://github.com/SamueleOlindo/filo/releases/latest/download/Filo.exe">
+        Download for Windows
+        <span class="meta">58 MB</span>
+      </a>
+      <a class="btn" href="https://github.com/SamueleOlindo/filo">Read the source</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section id="demo">
+  <div class="wrap">
+    <p class="eyebrow">The three lists</p>
+    <h2>One question, answered by three different searches.</h2>
+    <p class="section-note">
+      Each layer runs in turn, cheapest first, and the results are merged by rank.
+      Pick a question and watch which layer actually finds the file.
+    </p>
+
+    <div class="demo">
+      <div class="queries" id="queries" role="group" aria-label="Example questions"></div>
+
+      <div class="panel">
+        <div class="searchbar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+          </svg>
+          <div class="typed"><span id="typed"></span><span class="caret"></span></div>
+        </div>
+        <div class="layers" id="layers" aria-live="polite"></div>
+      </div>
+
+      <p class="payoff" id="payoff"></p>
+    </div>
+  </div>
+</section>
+
+<section id="screen">
+  <div class="wrap">
+    <p class="eyebrow">Where the disk went</p>
+    <h2>It shows you what is taking up space. It never decides.</h2>
+    <p class="section-note">
+      No "safe to delete" score, because a number invites automation and
+      automation is the one thing that must not happen where the action cannot be
+      undone. Nothing is ever pre-selected. Deletion means the Recycle Bin and
+      nothing else.
+    </p>
+    <figure>
+      <img src="images/space.png" width="884" height="581"
+           alt="Filo's Space screen, listing large files grouped by category, each with the
+                reason it was listed and an optional one-sentence explanation from the model.">
+      <figcaption>
+        The grey text is a rule Filo can defend. The boxed line is a small language
+        model saying what an unfamiliar file is — labelled as its opinion, and
+        forbidden from advising you on deletion.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <p class="eyebrow">How it works</p>
+    <h2>Fast because of what it refuses to do.</h2>
+
+    <div class="why-list">
+      <div class="why-item">
+        <h3>The file table, not a walk</h3>
+        <p>
+          NTFS already keeps every file in one internal table. Asking the driver
+          for it takes seconds; walking the directories takes minutes.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>Arrays, not objects</h3>
+        <p>
+          Names in one contiguous pool with offsets beside them. No string per
+          file, no allocation per file, and a search touches only the names.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>Parsers in another process</h3>
+        <p>
+          Every document format is arithmetic over bytes of unknown origin. They
+          run in workers under a job object. A malformed file costs one worker.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>The model is kept on a leash</h3>
+        <p>
+          Its reply is forced through a grammar into fixed options, so the worst
+          it can do is choose wrongly from a list we wrote.
+        </p>
+      </div>
+    </div>
+
+    <table class="specs">
+      <caption class="eyebrow" style="text-align:left; margin-top:3.5rem;">
+        Measured on one machine, once, on one real disk
+      </caption>
+      <tbody>
+        <tr><th>File table read</th><td>2.4 million records in 6.3 s</td></tr>
+        <tr><th>Held in memory</th><td>2,447,347 files · 180 MB</td></tr>
+        <tr><th>A search</th><td>13 ms</td></tr>
+        <tr><th>Embedding vectors</th><td>579,190 · 384 dims · int8</td></tr>
+        <tr><th>Offered for deletion</th><td>48.6 GB of a 372 GB disk</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <p class="eyebrow">Before you download</p>
+    <h2>What doesn't work yet.</h2>
+    <p class="section-note">
+      Written here rather than discovered later.
+    </p>
+
+    <div class="limits">
+      <p class="limit"><span><b>The first run needs administrator rights.</b>
+        Reading the file table is an elevated operation on Windows. Without it,
+        the first run fails and no window opens.</span></p>
+      <p class="limit"><span><b>Windows will warn you.</b> The download is not
+        code-signed, so SmartScreen asks. Choose <i>More info</i>, then
+        <i>Run anyway</i>.</span></p>
+      <p class="limit"><span><b>Search by meaning needs a model you fetch
+        yourself.</b> Two GGUF files, dropped in a folder. Nothing is downloaded
+        for you.</span></p>
+      <p class="limit"><span><b>18% of text chunks are still truncated</b> before
+        the embedding model reads their end. Down from 92%, not yet
+        zero.</span></p>
+      <p class="limit"><span><b>One volume at a time, NTFS only.</b> No OCR, and
+        no extractor for <code>.doc</code>, <code>.xls</code> or
+        <code>.ppt</code>.</span></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <span>MIT licensed</span>
+    <span class="sp"></span>
+    <a href="https://github.com/SamueleOlindo/filo">Source</a>
+    <a href="https://github.com/SamueleOlindo/filo/releases/latest">Releases</a>
+    <a href="https://github.com/SamueleOlindo/filo/blob/main/docs/building.md">Building</a>
+    <a href="https://github.com/SamueleOlindo/filo/blob/main/docs/models.md">Models</a>
+  </div>
+</footer>
+
+<script>
+/* ---------------------------------------------------------------------------
+   The labyrinth behind the hero.
+   A classical labyrinth, not a maze: one path, no dead ends, no choices. That
+   is the whole reason a thread is enough to get back out, and the reason the
+   program is called Filo.
+   --------------------------------------------------------------------------- */
+(function drawLabyrinth() {
+  const canvas = document.getElementById('labyrinth');
+  const ctx = canvas.getContext('2d');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let w = 0, h = 0, cx = 0, cy = 0, radius = 0, raf = 0;
+  const TURNS = 7;
+
+  function ink(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.clientWidth;
+    h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    /* Off to the right and low, so the thread runs behind the headline rather
+       than through it. On a narrow screen it moves off the top corner. */
+    cx = w > 900 ? w * 0.78 : w * 0.92;
+    cy = w > 900 ? h * 0.52 : h * 0.22;
+    radius = Math.min(Math.max(w, h) * 0.52, 620);
+  }
+
+  /* Archimedean spiral: the walls of the labyrinth, faint, and the single path
+     between them, in thread red. */
+  function spiral(from, to, spacing, offset) {
+    const total = TURNS * Math.PI * 2;
+    ctx.beginPath();
+    for (let t = from * total; t <= to * total; t += 0.03) {
+      const r = (t / total) * radius * spacing + offset;
+      const x = cx + Math.cos(t) * r;
+      const y = cy + Math.sin(t) * r * 0.98;
+      if (t === from * total) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function paint(progress) {
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = ink('--faint');
+    ctx.lineWidth = 1.5;
+    spiral(0.06, 1, 1, 26);
+
+    ctx.strokeStyle = ink('--thread');
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 2.5;
+    if (progress > 0.06) spiral(0.06, progress, 1, 0);
+    ctx.globalAlpha = 1;
+
+    /* The bead at the end of the thread — the same mark as the icon. */
+    if (progress > 0.06) {
+      const total = TURNS * Math.PI * 2;
+      const t = progress * total;
+      const r = (t / total) * radius;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(t) * r, cy + Math.sin(t) * r * 0.98, 5, 0, Math.PI * 2);
+      ctx.fillStyle = ink('--thread');
+      ctx.fill();
+    }
+  }
+
+  function run() {
+    cancelAnimationFrame(raf);
+    resize();
+    if (still) { paint(1); return; }
+    const started = performance.now();
+    const DURATION = 2600;
+    (function frame(now) {
+      const k = Math.min((now - started) / DURATION, 1);
+      /* Ease out: the thread leaves the centre quickly and settles at the rim. */
+      paint(0.06 + (1 - Math.pow(1 - k, 3)) * 0.94);
+      if (k < 1) raf = requestAnimationFrame(frame);
+    })(started);
+  }
+
+  run();
+  let bounce;
+  window.addEventListener('resize', () => {
+    clearTimeout(bounce);
+    bounce = setTimeout(() => { resize(); paint(1); }, 150);
+  });
+  /* Repaint on a theme change so the faint walls keep their contrast. */
+  window.matchMedia('(prefers-color-scheme: dark)')
+        .addEventListener('change', () => { resize(); paint(1); });
+})();
+
+/* ---------------------------------------------------------------------------
+   The demo.
+   Three questions. For each, what each layer really finds — including the
+   layers that find nothing, which is the point.
+   --------------------------------------------------------------------------- */
+const QUESTIONS = [
+  {
+    q: 'what did we agree about late delivery',
+    name:    [],
+    content: [],
+    meaning: [{
+      file: 'supply-agreement-2024.pdf',
+      why: 'the supplier shall pay <mark>liquidated damages</mark> for each day of <mark>delay</mark>'
+    }],
+    payoff: 'Not one word of the question appears in that document. ' +
+            'The name search and the word search both come back empty, and the ' +
+            'answer is still the right file.'
+  },
+  {
+    q: 'how do I cancel the subscription',
+    name:    [],
+    content: [
+      { file: 'billing-faq.md', why: 'to <mark>cancel</mark> your <mark>subscription</mark>, open Settings and…' }
+    ],
+    meaning: [
+      { file: 'service-terms.pdf', why: 'either party may <mark>terminate</mark> on thirty days’ written <mark>notice</mark>' }
+    ],
+    payoff: 'The words search finds the help note you already knew about. ' +
+            'The meaning search finds the contract that actually governs it, ' +
+            'which says "terminate" and never says "cancel".'
+  },
+  {
+    q: 'invoice from the plumber',
+    name: [
+      { file: 'invoice-2024-03-17.pdf', why: 'the words are in the file name' }
+    ],
+    content: [
+      { file: 'accounts-q1.xlsx', why: 'row 48 — <mark>invoice</mark> 2024-03-17, paid' }
+    ],
+    meaning: [
+      { file: 'receipt-boiler-repair.pdf', why: 'labour and parts for the <mark>heating system</mark>, call-out charge' }
+    ],
+    payoff: 'All three layers answer, and they answer differently. ' +
+            'Merged by rank, the file you were thinking of comes first.'
+  }
+];
+
+const LAYERS = [
+  { key: 'name',    n: '01', title: 'By name',    note: 'the file table, in memory' },
+  { key: 'content', n: '02', title: 'By words',   note: 'full text, stemmed' },
+  { key: 'meaning', n: '03', title: 'By meaning', note: 'embeddings, no shared words needed' }
+];
+
+const $queries = document.getElementById('queries');
+const $layers  = document.getElementById('layers');
+const $typed   = document.getElementById('typed');
+const $payoff  = document.getElementById('payoff');
+
+let current = -1;
+let typing = 0;
+
+function render(index) {
+  const item = QUESTIONS[index];
+
+  for (const button of $queries.children) {
+    button.setAttribute('aria-pressed', String(Number(button.dataset.i) === index));
+  }
+
+  $layers.innerHTML = LAYERS.map(layer => {
+    const hits = item[layer.key];
+    const body = hits.length
+      ? hits.map(hit =>
+          '<div class="hit"><span class="file">' + hit.file + '</span>' +
+          '<span class="why">' + hit.why + '</span></div>').join('')
+      : '<p class="nothing">nothing</p>';
+    return '<div class="layer">' +
+             '<div class="layer-name"><b>' + layer.n + ' — ' + layer.title + '</b>' +
+               layer.note + '</div>' +
+             '<div class="hits">' + body + '</div>' +
+           '</div>';
+  }).join('');
+
+  $payoff.innerHTML = item.payoff;
+
+  /* Type the question out, because a search box that fills itself instantly
+     reads as a screenshot rather than as something happening. */
+  clearInterval(typing);
+  const text = item.q;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    $typed.textContent = text;
+    return;
+  }
+  let at = 0;
+  $typed.textContent = '';
+  typing = setInterval(() => {
+    $typed.textContent = text.slice(0, ++at);
+    if (at >= text.length) clearInterval(typing);
+  }, 28);
+}
+
+QUESTIONS.forEach((item, i) => {
+  const button = document.createElement('button');
+  button.className = 'q';
+  button.type = 'button';
+  button.dataset.i = String(i);
+  button.setAttribute('aria-pressed', 'false');
+  button.textContent = item.q;
+  button.addEventListener('click', () => { if (current !== i) { current = i; render(i); } });
+  $queries.appendChild(button);
+});
+
+current = 0;
+render(0);
+</script>
+
+</body>
+</html>
