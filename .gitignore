@@ -1,0 +1,16 @@
+build/
+out/
+.vs/
+.cache/
+CMakeUserPresets.json
+
+# Index artifacts (these live in %LOCALAPPDATA%\filo, but never commit one by accident)
+*.db
+*.db-wal
+*.db-shm
+*.vec
+index-*.bin
+ui-diag.log
+
+# Models are large and licensed separately: keep them out of the tree.
+*.gguf

@@ -1,0 +1,30 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Release, Ninja, MSVC",
+      "description": "Builds Filo with everything it can find. PDF extraction and semantic search switch themselves off when PDFIUM_ROOT and LLAMA_ROOT are not set, so this configures on a machine that has neither.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "full",
+      "inherits": "default",
+      "displayName": "Release with PDFium and llama.cpp",
+      "description": "Everything on. Expects PDFIUM_ROOT and LLAMA_ROOT in the environment, or passed with -D. See the readme for how to build those two.",
+      "cacheVariables": {
+        "PDFIUM_ROOT": "$env{PDFIUM_ROOT}",
+        "LLAMA_ROOT": "$env{LLAMA_ROOT}"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "default", "configurePreset": "default" },
+    { "name": "full", "configurePreset": "full" }
+  ]
+}
